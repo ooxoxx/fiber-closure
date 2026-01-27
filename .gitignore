@@ -1,0 +1,33 @@
+# Darknet framework (external symlink)
+darknet/
+
+# Weights and models
+*.weights
+*.backup
+weights/
+
+# Training data (large files)
+data/
+
+# Build artifacts
+build/
+*.o
+*.so
+*.a
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Log and monitor
+/*.png
