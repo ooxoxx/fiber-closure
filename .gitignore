@@ -1,5 +1,7 @@
 # Darknet framework (external symlink)
 darknet/
+darknet
+bin/
 
 # Weights and models
 *.weights
@@ -31,3 +33,6 @@ venv/
 
 # Log and monitor
 /*.png
+
+# misc
+*.zip
