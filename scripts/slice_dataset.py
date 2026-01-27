@@ -138,8 +138,7 @@ def convert_label_to_tile(
 def slice_image(
     image_path: Path,
     label_path: Path,
-    output_images_dir: Path,
-    output_labels_dir: Path,
+    output_dir: Path,
     tile_size: int,
     overlap: float,
     min_area_ratio: float
@@ -203,8 +202,8 @@ def slice_image(
 
             # Generate tile filename
             tile_name = f"{base_name}_r{row_idx:02d}_c{col_idx:02d}"
-            tile_image_path = output_images_dir / f"{tile_name}.jpg"
-            tile_label_path = output_labels_dir / f"{tile_name}.txt"
+            tile_image_path = output_dir / f"{tile_name}.jpg"
+            tile_label_path = output_dir / f"{tile_name}.txt"
 
             # Save tile image
             cv2.imwrite(str(tile_image_path), tile)
@@ -267,12 +266,9 @@ def main():
     input_images_dir = Path(args.input_images)
     input_labels_dir = Path(args.input_labels)
     output_dir = Path(args.output_dir)
-    output_images_dir = output_dir / 'images'
-    output_labels_dir = output_dir / 'labels'
 
-    # Create output directories
-    output_images_dir.mkdir(parents=True, exist_ok=True)
-    output_labels_dir.mkdir(parents=True, exist_ok=True)
+    # Create output directory
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Find all images
     image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'}
@@ -299,7 +295,7 @@ def main():
 
         tiles = slice_image(
             image_path, label_path,
-            output_images_dir, output_labels_dir,
+            output_dir,
             args.tile_size, args.overlap, args.min_area
         )
         total_tiles += tiles
