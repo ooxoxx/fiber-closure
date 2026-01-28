@@ -13,12 +13,14 @@ RAW_IMAGES="data/raw/images"
 RAW_LABELS="data/raw/labels"
 SLICED_DIR="data/sliced"
 OUTPUT_DIR="data"
-TILE_SIZE=1024
+TILE_SIZE=928
 OVERLAP=0.2
 MIN_AREA=0.6
 TRAIN_RATIO=0.9
 NEGATIVE_RATIO=0.1
 SEED=42
+MIN_VALID_CLASS_COUNT=0
+NUM_CLASSES=5
 
 # Project root directory for locating Python scripts
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,6 +43,8 @@ Options:
     --train-ratio RATIO  Training set ratio (default: $TRAIN_RATIO)
     --negative-ratio R   Negative sample ratio (default: $NEGATIVE_RATIO)
     --seed NUM           Random seed (default: $SEED)
+    --min-valid-class N  Minimum instances per class in validation set (default: $MIN_VALID_CLASS_COUNT)
+    --num-classes N      Number of classes in dataset (default: $NUM_CLASSES)
     -h, --help           Show this help message
 
 Example:
@@ -90,6 +94,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --seed)
             SEED="$2"
+            shift 2
+            ;;
+        --min-valid-class)
+            MIN_VALID_CLASS_COUNT="$2"
+            shift 2
+            ;;
+        --num-classes)
+            NUM_CLASSES="$2"
             shift 2
             ;;
         -h|--help)
@@ -162,7 +174,9 @@ python3 "$PROJECT_ROOT/scripts/prepare_training.py" \
     --output-dir "$OUTPUT_DIR" \
     --train-ratio "$TRAIN_RATIO" \
     --negative-ratio "$NEGATIVE_RATIO" \
-    --seed "$SEED"
+    --seed "$SEED" \
+    --min-valid-class-count "$MIN_VALID_CLASS_COUNT" \
+    --num-classes "$NUM_CLASSES"
 
 echo ""
 echo "============================================"

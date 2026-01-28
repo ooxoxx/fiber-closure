@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Slice 4K images into 1024x1024 tiles with label coordinate conversion.
+Slice 4K images into tiles with label coordinate conversion using SAHI.
 
 Usage:
     python scripts/slice_dataset.py \
         --input-images data/raw/images \
         --input-labels data/raw/labels \
         --output-dir data/sliced \
-        --tile-size 1024 \
+        --tile-size 928 \
         --overlap 0.2 \
         --min-area 0.6
 """
@@ -19,6 +19,7 @@ from typing import List, Tuple, Optional
 
 import cv2
 import numpy as np
+from sahi.slicing import slice_image as sahi_slice_image
 from tqdm import tqdm
 
 
@@ -135,7 +136,7 @@ def convert_label_to_tile(
     return (class_id, local_x_center, local_y_center, local_w_norm, local_h_norm)
 
 
-def slice_image(
+def slice_image_with_sahi(
     image_path: Path,
     label_path: Path,
     output_dir: Path,
@@ -143,12 +144,20 @@ def slice_image(
     overlap: float,
     min_area_ratio: float
 ) -> int:
-    """Slice a single image and its labels into tiles.
+    """Slice a single image and its labels into tiles using SAHI.
+
+    Args:
+        image_path: Path to input image
+        label_path: Path to YOLO label file
+        output_dir: Output directory for tiles
+        tile_size: Size of output tiles (square)
+        overlap: Overlap ratio between tiles (0.0-1.0)
+        min_area_ratio: Minimum area ratio to keep a label
 
     Returns:
         Number of tiles created
     """
-    # Read image
+    # Read image to get dimensions
     img = cv2.imread(str(image_path))
     if img is None:
         print(f"Warning: Could not read image {image_path}")
@@ -159,76 +168,60 @@ def slice_image(
     # Parse labels
     labels = parse_yolo_label(label_path)
 
-    # Calculate step size
-    step = int(tile_size * (1 - overlap))
-
-    # Generate tile positions
-    tile_count = 0
+    # Use SAHI to slice the image (don't pass output_dir - we save files ourselves)
     base_name = image_path.stem
+    slice_result = sahi_slice_image(
+        image=str(image_path),
+        slice_height=tile_size,
+        slice_width=tile_size,
+        overlap_height_ratio=overlap,
+        overlap_width_ratio=overlap,
+        verbose=False,
+    )
 
-    y = 0
-    row_idx = 0
-    while y < img_height:
-        x = 0
-        col_idx = 0
+    # Process each sliced image and create corresponding labels
+    tile_count = 0
+    for idx, sliced_image in enumerate(slice_result.sliced_image_list):
+        # Get tile position from SAHI result
+        tile_x = sliced_image.starting_pixel[0]
+        tile_y = sliced_image.starting_pixel[1]
 
-        # Adjust y for last row to not exceed image bounds
-        if y + tile_size > img_height:
-            y = max(0, img_height - tile_size)
+        # Generate output filename (similar to SAHI's naming convention)
+        tile_name = f"{base_name}_{tile_x}_{tile_y}_{tile_x + tile_size}_{tile_y + tile_size}"
+        tile_image_path = output_dir / f"{tile_name}.jpg"
+        tile_label_path = output_dir / f"{tile_name}.txt"
 
-        while x < img_width:
-            # Adjust x for last column to not exceed image bounds
-            if x + tile_size > img_width:
-                x = max(0, img_width - tile_size)
+        # Save tile image (SAHI stores image data in memory)
+        tile_img = sliced_image.image
+        if tile_img is not None:
+            # Convert RGB to BGR for OpenCV
+            if len(tile_img.shape) == 3 and tile_img.shape[2] == 3:
+                tile_img = cv2.cvtColor(tile_img, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(str(tile_image_path), tile_img)
 
-            # Extract tile
-            tile = img[y:y+tile_size, x:x+tile_size]
+        # Convert labels for this tile
+        tile_labels = []
+        for label in labels:
+            converted = convert_label_to_tile(
+                label, img_width, img_height,
+                tile_x, tile_y, tile_size, min_area_ratio
+            )
+            if converted is not None:
+                tile_labels.append(converted)
 
-            # Skip if tile is smaller than expected (edge case)
-            if tile.shape[0] != tile_size or tile.shape[1] != tile_size:
-                x += step
-                col_idx += 1
-                continue
+        # Save tile labels
+        with open(tile_label_path, 'w') as f:
+            for lbl in tile_labels:
+                class_id, xc, yc, w, h = lbl
+                f.write(f"{class_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}\n")
 
-            # Convert labels for this tile
-            tile_labels = []
-            for label in labels:
-                converted = convert_label_to_tile(
-                    label, img_width, img_height,
-                    x, y, tile_size, min_area_ratio
-                )
-                if converted is not None:
-                    tile_labels.append(converted)
-
-            # Generate tile filename
-            tile_name = f"{base_name}_r{row_idx:02d}_c{col_idx:02d}"
-            tile_image_path = output_dir / f"{tile_name}.jpg"
-            tile_label_path = output_dir / f"{tile_name}.txt"
-
-            # Save tile image
-            cv2.imwrite(str(tile_image_path), tile)
-
-            # Save tile labels
-            with open(tile_label_path, 'w') as f:
-                for lbl in tile_labels:
-                    class_id, xc, yc, w, h = lbl
-                    f.write(f"{class_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}\n")
-
-            tile_count += 1
-
-            # Move to next column
-            if x + tile_size >= img_width:
-                break
-            x += step
-            col_idx += 1
-
-        # Move to next row
-        if y + tile_size >= img_height:
-            break
-        y += step
-        row_idx += 1
+        tile_count += 1
 
     return tile_count
+
+
+# Keep old function name as alias for backward compatibility
+slice_image = slice_image_with_sahi
 
 
 def main():
@@ -248,8 +241,8 @@ def main():
         help='Output directory for sliced data'
     )
     parser.add_argument(
-        '--tile-size', type=int, default=1024,
-        help='Size of output tiles (default: 1024)'
+        '--tile-size', type=int, default=928,
+        help='Size of output tiles (default: 928)'
     )
     parser.add_argument(
         '--overlap', type=float, default=0.2,
