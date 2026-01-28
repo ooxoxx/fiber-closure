@@ -1,0 +1,58 @@
+name: Package for Deployment
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION="v$(date +'%Y.%m.%d')-${GITHUB_SHA::7}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create deployment package
+        run: |
+          tar -czvf fiber-closure-deploy.tar.gz \
+            --exclude='*.pyc' \
+            --exclude='__pycache__' \
+            --exclude='.pytest_cache' \
+            --exclude='.venv' \
+            --exclude='*.weights' \
+            inference/ \
+            scripts/ \
+            cfg/ \
+            docs/ \
+            tests/ \
+            pyproject.toml \
+            requirements.txt \
+            prepare.sh \
+            train.sh \
+            .env.example \
+            DEPLOY.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Deployment Package ${{ steps.version.outputs.version }}
+          body: |
+            自动打包的部署文件，包含训练和推理代码。
+
+            **下载后解压:**
+            ```bash
+            tar -xzvf fiber-closure-deploy.tar.gz
+            ```
+
+            详见 DEPLOY.md 了解部署步骤。
+          files: fiber-closure-deploy.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
