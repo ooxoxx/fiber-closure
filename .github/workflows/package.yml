@@ -21,7 +21,7 @@ jobs:
 
       - name: Create deployment package
         run: |
-          tar -czvf fiber-closure-deploy.tar.gz \
+          tar -czvf fiber-closure-${{ steps.version.outputs.version }}.tar.gz \
             --exclude='*.pyc' \
             --exclude='__pycache__' \
             --exclude='.pytest_cache' \
@@ -33,7 +33,6 @@ jobs:
             docs/ \
             tests/ \
             pyproject.toml \
-            requirements.txt \
             prepare.sh \
             train.sh \
             .env.example \
@@ -49,10 +48,10 @@ jobs:
 
             **下载后解压:**
             ```bash
-            tar -xzvf fiber-closure-deploy.tar.gz
+            tar -xzvf fiber-closure-${{ steps.version.outputs.version }}.tar.gz
             ```
 
             详见 DEPLOY.md 了解部署步骤。
-          files: fiber-closure-deploy.tar.gz
+          files: fiber-closure-${{ steps.version.outputs.version }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
