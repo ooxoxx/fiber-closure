@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Slice 4K images into tiles with label coordinate conversion using SAHI.
+Slice 4K images into tiles with label coordinate conversion.
 
 Usage:
     python scripts/slice_dataset.py \
@@ -13,13 +13,11 @@ Usage:
 """
 
 import argparse
-import os
 from pathlib import Path
 from typing import List, Tuple, Optional
 
 import cv2
 import numpy as np
-from sahi.slicing import slice_image as sahi_slice_image
 from tqdm import tqdm
 
 
@@ -136,7 +134,7 @@ def convert_label_to_tile(
     return (class_id, local_x_center, local_y_center, local_w_norm, local_h_norm)
 
 
-def slice_image_with_sahi(
+def slice_image(
     image_path: Path,
     label_path: Path,
     output_dir: Path,
@@ -144,7 +142,7 @@ def slice_image_with_sahi(
     overlap: float,
     min_area_ratio: float
 ) -> int:
-    """Slice a single image and its labels into tiles using SAHI.
+    """Slice a single image and its labels into tiles.
 
     Args:
         image_path: Path to input image
@@ -157,71 +155,73 @@ def slice_image_with_sahi(
     Returns:
         Number of tiles created
     """
-    # Read image to get dimensions
     img = cv2.imread(str(image_path))
     if img is None:
         print(f"Warning: Could not read image {image_path}")
         return 0
 
     img_height, img_width = img.shape[:2]
-
-    # Parse labels
     labels = parse_yolo_label(label_path)
-
-    # Use SAHI to slice the image (don't pass output_dir - we save files ourselves)
     base_name = image_path.stem
-    slice_result = sahi_slice_image(
-        image=str(image_path),
-        slice_height=tile_size,
-        slice_width=tile_size,
-        overlap_height_ratio=overlap,
-        overlap_width_ratio=overlap,
-        verbose=False,
-    )
+    step = int(tile_size * (1 - overlap))
 
-    # Process each sliced image and create corresponding labels
     tile_count = 0
-    for idx, sliced_image in enumerate(slice_result.sliced_image_list):
-        # Get tile position from SAHI result
-        tile_x = sliced_image.starting_pixel[0]
-        tile_y = sliced_image.starting_pixel[1]
+    y = 0
+    while y < img_height:
+        x = 0
+        while x < img_width:
+            # Extract tile region
+            x_end = min(x + tile_size, img_width)
+            y_end = min(y + tile_size, img_height)
+            tile_img = img[y:y_end, x:x_end]
 
-        # Generate output filename (similar to SAHI's naming convention)
-        tile_name = f"{base_name}_{tile_x}_{tile_y}_{tile_x + tile_size}_{tile_y + tile_size}"
-        tile_image_path = output_dir / f"{tile_name}.jpg"
-        tile_label_path = output_dir / f"{tile_name}.txt"
+            # Pad if tile is smaller than tile_size (edge tiles)
+            if tile_img.shape[0] < tile_size or tile_img.shape[1] < tile_size:
+                padded = np.zeros((tile_size, tile_size, 3), dtype=np.uint8)
+                padded[:tile_img.shape[0], :tile_img.shape[1]] = tile_img
+                tile_img = padded
 
-        # Save tile image (SAHI stores image data in memory)
-        tile_img = sliced_image.image
-        if tile_img is not None:
-            # Convert RGB to BGR for OpenCV
-            if len(tile_img.shape) == 3 and tile_img.shape[2] == 3:
-                tile_img = cv2.cvtColor(tile_img, cv2.COLOR_RGB2BGR)
+            # Generate output filename
+            tile_name = f"{base_name}_{x}_{y}_{x + tile_size}_{y + tile_size}"
+            tile_image_path = output_dir / f"{tile_name}.jpg"
+            tile_label_path = output_dir / f"{tile_name}.txt"
+
+            # Save tile image
             cv2.imwrite(str(tile_image_path), tile_img)
 
-        # Convert labels for this tile
-        tile_labels = []
-        for label in labels:
-            converted = convert_label_to_tile(
-                label, img_width, img_height,
-                tile_x, tile_y, tile_size, min_area_ratio
-            )
-            if converted is not None:
-                tile_labels.append(converted)
+            # Convert labels for this tile
+            tile_labels = []
+            for label in labels:
+                converted = convert_label_to_tile(
+                    label, img_width, img_height,
+                    x, y, tile_size, min_area_ratio
+                )
+                if converted is not None:
+                    tile_labels.append(converted)
 
-        # Save tile labels
-        with open(tile_label_path, 'w') as f:
-            for lbl in tile_labels:
-                class_id, xc, yc, w, h = lbl
-                f.write(f"{class_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}\n")
+            # Save tile labels
+            with open(tile_label_path, 'w') as f:
+                for lbl in tile_labels:
+                    class_id, xc, yc, w, h = lbl
+                    f.write(f"{class_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}\n")
 
-        tile_count += 1
+            tile_count += 1
+
+            # Move to next column
+            if x + tile_size >= img_width:
+                break
+            x += step
+
+        # Move to next row
+        if y + tile_size >= img_height:
+            break
+        y += step
 
     return tile_count
 
 
 # Keep old function name as alias for backward compatibility
-slice_image = slice_image_with_sahi
+slice_image_with_sahi = slice_image
 
 
 def main():

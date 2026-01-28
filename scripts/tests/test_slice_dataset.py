@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for slice_dataset.py using SAHI-based image tiling."""
+"""Tests for slice_dataset.py image tiling."""
 
 import sys
 from pathlib import Path
@@ -12,7 +12,7 @@ import numpy as np
 import cv2
 
 from slice_dataset import (
-    slice_image_with_sahi,
+    slice_image,
     convert_label_to_tile,
     parse_yolo_label,
 )
@@ -43,7 +43,7 @@ class TestSliceImageBasic:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        tile_count = slice_image_with_sahi(
+        tile_count = slice_image(
             image_path=img_path,
             label_path=label_path,
             output_dir=output_dir,
@@ -82,7 +82,7 @@ class TestSliceImageBasic:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        tile_count = slice_image_with_sahi(
+        tile_count = slice_image(
             image_path=img_path,
             label_path=label_path,
             output_dir=output_dir,
@@ -197,7 +197,7 @@ class TestMinAreaFiltering:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        slice_image_with_sahi(
+        slice_image(
             image_path=img_path,
             label_path=label_path,
             output_dir=output_dir,
@@ -235,7 +235,7 @@ class TestOverlapCalculation:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        tile_count = slice_image_with_sahi(
+        tile_count = slice_image(
             image_path=img_path,
             label_path=label_path,
             output_dir=output_dir,
