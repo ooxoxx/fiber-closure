@@ -147,6 +147,10 @@ class DarknetDetector:
         """Convert numpy array to darknet IMAGE."""
         arr = arr.astype(np.float32) / 255.0
         h, w, c = arr.shape
+        logger.debug(
+            f"Image conversion: shape=({h}, {w}, {c}), dtype=float32, "
+            f"range=[{arr.min():.3f}, {arr.max():.3f}]"
+        )
         arr = arr.transpose(2, 0, 1).flatten()
         image = self.dn.make_image(w, h, c)
         self.dn.copy_image_from_bytes(image, arr.tobytes())

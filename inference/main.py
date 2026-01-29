@@ -1,6 +1,7 @@
 """FastAPI inference service for fiber optic closure detection."""
 
 import logging
+import sys
 import time
 from contextlib import asynccontextmanager
 from typing import List
@@ -10,6 +11,14 @@ import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
+# Configure logging to output debug messages to stderr
+# This ensures inference logger (and its children like inference.detector)
+# produce visible output when running with uvicorn --log-level debug
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(levelname)s:%(name)s:%(message)s",
+    stream=sys.stderr,
+)
 logger = logging.getLogger("inference")
 
 from . import __version__
