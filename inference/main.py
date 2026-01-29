@@ -1,5 +1,6 @@
 """FastAPI inference service for fiber optic closure detection."""
 
+import logging
 import time
 from contextlib import asynccontextmanager
 from typing import List
@@ -8,6 +9,8 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger("inference")
 
 from . import __version__
 from .config import settings
@@ -104,6 +107,7 @@ async def detect(
         raise HTTPException(status_code=400, detail="Invalid image file")
 
     h, w = image.shape[:2]
+    logger.debug(f"Received image: {w}x{h}, {len(contents)} bytes")
 
     # Get detector
     detector = get_detector()
@@ -117,22 +121,30 @@ async def detect(
 
     # Slice image
     tiles = slicer.slice(image)
+    logger.debug(
+        f"Sliced into {len(tiles)} tiles (tile_size={settings.tile_size}, "
+        f"overlap={settings.tile_overlap})"
+    )
 
     # Run detection on each tile
     all_detections: List[Detection] = []
     for tile in tiles:
         raw_dets = detector.detect(tile.image)
+        logger.debug(f"Tile ({tile.x}, {tile.y}): {len(raw_dets)} raw detections")
         dets = restore_coordinates(raw_dets, tile)
         dets = mark_edge_boxes(dets, tile, settings.tile_size, settings.edge_margin)
         all_detections.extend(dets)
 
     # Post-processing
+    logger.debug(f"After restore_coordinates: {len(all_detections)} detections")
     all_detections = containment_suppression(
         all_detections, settings.iom_threshold
     )
+    logger.debug(f"After containment_suppression: {len(all_detections)} detections")
     all_detections = global_nms(
         all_detections, settings.global_nms_threshold
     )
+    logger.debug(f"After global_nms: {len(all_detections)} detections")
 
     # Convert to response format
     results = [

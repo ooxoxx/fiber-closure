@@ -1,5 +1,6 @@
 """Darknet detector wrapper with thread-safe inference."""
 
+import logging
 import os
 import sys
 import threading
@@ -11,6 +12,8 @@ import cv2
 import numpy as np
 
 from .config import settings
+
+logger = logging.getLogger("inference.detector")
 
 
 class DarknetDetector:
@@ -54,6 +57,12 @@ class DarknetDetector:
         self.network = self._load_network(cfg_path, weights_path)
         self.class_names = self._load_class_names(data_path)
         self.network_width, self.network_height = self._get_network_size()
+
+        logger.debug(
+            f"Model loaded: cfg={cfg_path}, weights={weights_path}, "
+            f"network_size={self.network_width}x{self.network_height}, "
+            f"classes={self.class_names}"
+        )
 
     def _validate_model_files(
         self, cfg_path: Path, weights_path: Path, data_path: Path
@@ -160,6 +169,10 @@ class DarknetDetector:
         # Convert BGR to RGB
         rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
 
+        logger.debug(
+            f"Inference: input={image.shape}, thresh={self.thresh}, nms={self.nms}"
+        )
+
         with self._inference_lock:
             darknet_image = self._array_to_image(rgb)
             detections = self.dn.detect_image(
@@ -171,6 +184,14 @@ class DarknetDetector:
                 nms=self.nms,
             )
             self.dn.free_image(darknet_image)
+
+        logger.debug(f"Darknet returned {len(detections)} raw detections")
+        for class_name, confidence, bbox in detections:
+            x, y, bw, bh = bbox
+            logger.debug(
+                f"Detection: {class_name} {confidence}% at "
+                f"({x:.0f},{y:.0f},{bw:.0f},{bh:.0f})"
+            )
 
         # Scale coordinates back to original image size
         h, w = image.shape[:2]
