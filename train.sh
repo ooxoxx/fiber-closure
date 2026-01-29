@@ -1,14 +1,14 @@
 #!/bin/bash
-# YOLOv4 Training Script for Fiber Closure Detection
+# YOLOv4-Tiny Training Script for Fiber Closure Detection
 # Usage: ./train.sh [gpu_id]
 
 set -e
 
 # Configuration
-DARKNET_BIN="./darknet/darknet"
+DARKNET_BIN="./darknet/build/src-cli/darknet"
 DATA_FILE="cfg/fiber.data"
-CFG_FILE="cfg/fiber.cfg"
-WEIGHTS_FILE="weights/yolov4.conv.137"
+CFG_FILE="cfg/fiber-tiny.cfg"
+WEIGHTS_FILE="weights/yolov4-tiny.conv.29"
 LOG_DIR="logs"
 GPU_ID="${1:-0}"
 
@@ -29,7 +29,7 @@ fi
 # Check if pre-trained weights exist
 if [ ! -f "$WEIGHTS_FILE" ]; then
     echo "Error: Pre-trained weights not found at $WEIGHTS_FILE"
-    echo "Download from: https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.conv.137"
+    echo "Download from: https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v4_pre/yolov4-tiny.conv.29"
     exit 1
 fi
 
@@ -45,7 +45,7 @@ if [ ! -f "$CFG_FILE" ]; then
     exit 1
 fi
 
-echo "Starting YOLOv4 training..."
+echo "Starting YOLOv4-Tiny training..."
 echo "  Data:    $DATA_FILE"
 echo "  Config:  $CFG_FILE"
 echo "  Weights: $WEIGHTS_FILE"

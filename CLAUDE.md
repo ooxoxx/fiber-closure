@@ -43,15 +43,17 @@ Violating these will cause model confusion between "fallen" and "normal" states.
 
 ## Training Pipeline
 
-1. **Slice 4K images**: 1024×1024 tiles, 20% overlap
+Default model: **YOLOv4-Tiny** (faster training and inference, suitable for edge deployment)
+
+1. **Slice 4K images**: 928×928 tiles, 20% overlap
 2. **Label handling**: Convert global→local coords; discard if <60% area retained
 3. **Anchor clustering**: Re-cluster for thin elongated targets
-4. **Config**: `batch=64`, `subdivisions=16` (8 for H100), `width=height=1024`
+4. **Config**: `batch=64`, `subdivisions=16` (8 for H100), `width=height=928`
 5. **Max batches**: `num_classes × 2000`
 
-## Inference Pipeline (SAHI-based)
+## Inference Pipeline
 
-1. **High-overlap slicing**: 30% overlap (step=716 for 1024 tiles)
+1. **High-overlap slicing**: 30% overlap (step=650 for 928 tiles)
 2. **Edge filtering**: Mark boxes within 2px of slice edges as low-quality
 3. **Containment suppression**: IoM > 0.7 → larger non-edge box wins
 4. **Coordinate restoration**: Map back to 4K global coordinates
