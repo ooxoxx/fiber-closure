@@ -44,6 +44,9 @@ class DarknetDetector:
         self.hier_thresh = hier_thresh
         self._inference_lock = threading.Lock()
 
+        # Validate model files exist
+        self._validate_model_files(cfg_path, weights_path, data_path)
+
         # Load darknet library
         self._load_darknet_lib()
 
@@ -51,6 +54,23 @@ class DarknetDetector:
         self.network = self._load_network(cfg_path, weights_path)
         self.class_names = self._load_class_names(data_path)
         self.network_width, self.network_height = self._get_network_size()
+
+    def _validate_model_files(
+        self, cfg_path: Path, weights_path: Path, data_path: Path
+    ) -> None:
+        """Validate that all required model files exist."""
+        if not Path(cfg_path).exists():
+            raise FileNotFoundError(
+                f"Model cfg file not found: {cfg_path}"
+            )
+        if not Path(weights_path).exists():
+            raise FileNotFoundError(
+                f"Model weights file not found: {weights_path}"
+            )
+        if not Path(data_path).exists():
+            raise FileNotFoundError(
+                f"Model data file not found: {data_path}"
+            )
 
     def _load_darknet_lib(self) -> None:
         """Load the darknet shared library."""
@@ -64,8 +84,19 @@ class DarknetDetector:
         # Set library path for ctypes
         os.environ["DARKNET_LIB_PATH"] = lib_path
 
-        # Import darknet module
-        import darknet as dn
+        # Import darknet module with error handling
+        try:
+            import darknet as dn
+        except ImportError as e:
+            raise RuntimeError(
+                f"Failed to import darknet module: {e}. "
+                "Ensure darknet Python bindings are available."
+            ) from e
+        except OSError as e:
+            raise RuntimeError(
+                f"Failed to load libdarknet shared library: {e}. "
+                f"Check that DARKNET_LIB_PATH ({lib_path}) points to a valid library."
+            ) from e
 
         self.dn = dn
 
@@ -99,7 +130,8 @@ class DarknetDetector:
 
     def _get_network_size(self) -> Tuple[int, int]:
         """Get network input dimensions."""
-        w, h, _ = self.dn.network_dimensions(self.network)
+        w = self.dn.network_width(self.network)
+        h = self.dn.network_height(self.network)
         return w, h
 
     def _array_to_image(self, arr: np.ndarray):

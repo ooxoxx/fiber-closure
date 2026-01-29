@@ -1,5 +1,5 @@
 classes = 5
 train = data/train.txt
 valid = data/valid.txt
-names = cfg/fiber.names
+names = fiber.names
 backup = data/backup/

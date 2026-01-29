@@ -82,10 +82,34 @@ class ImageSlicer:
 
     def get_tile_count(self, width: int, height: int) -> int:
         """Calculate the number of tiles for a given image size."""
-        cols = max(1, (width - self.tile_size) // self.step + 1)
-        if (width - self.tile_size) % self.step > 0:
-            cols += 1
-        rows = max(1, (height - self.tile_size) // self.step + 1)
-        if (height - self.tile_size) % self.step > 0:
-            rows += 1
+        # If image is smaller than or equal to tile size, only 1 tile needed
+        if width <= self.tile_size and height <= self.tile_size:
+            return 1
+
+        # Calculate columns (matching slice() logic)
+        if width <= self.tile_size:
+            cols = 1
+        else:
+            cols = 1
+            x = self.step
+            while x + self.tile_size < width:
+                cols += 1
+                x += self.step
+            # Add one more if there's remaining space
+            if x < width:
+                cols += 1
+
+        # Calculate rows (matching slice() logic)
+        if height <= self.tile_size:
+            rows = 1
+        else:
+            rows = 1
+            y = self.step
+            while y + self.tile_size < height:
+                rows += 1
+                y += self.step
+            # Add one more if there's remaining space
+            if y < height:
+                rows += 1
+
         return cols * rows

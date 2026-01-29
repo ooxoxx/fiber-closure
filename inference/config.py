@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Model paths
-    model_cfg: Path = Path("cfg/fiber.cfg")
-    model_weights: Path = Path("weights/fiber_best.weights")
+    model_cfg: Path = Path("cfg/fiber-tiny.cfg")
+    model_weights: Path = Path("weights/fiber-tiny_best.weights")
     model_data: Path = Path("cfg/fiber.data")
 
     # Detection thresholds
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     hier_threshold: float = 0.5
 
     # Slicer settings
-    tile_size: int = 928
+    tile_size: int = 1024
     tile_overlap: float = 0.3  # 30% overlap
 
     # Post-processing

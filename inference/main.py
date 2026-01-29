@@ -94,6 +94,9 @@ async def detect(
 
     # Read and decode image
     contents = await file.read()
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Invalid image file")
+
     nparr = np.frombuffer(contents, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
