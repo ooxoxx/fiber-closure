@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     hier_threshold: float = 0.5
 
     # Slicer settings
-    tile_size: int = 1024
+    tile_size: int = 928
     tile_overlap: float = 0.3  # 30% overlap
 
     # Post-processing

@@ -19,7 +19,7 @@ class Tile:
 class ImageSlicer:
     """Slice large images into overlapping tiles for inference."""
 
-    def __init__(self, tile_size: int = 1024, overlap: float = 0.3):
+    def __init__(self, tile_size: int = 928, overlap: float = 0.3):
         """
         Initialize the slicer.
 
